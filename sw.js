@@ -1,7 +1,7 @@
 /* Afterglow service worker: makes the site installable and usable offline.
    Bump VERSION whenever you deploy changed files so visitors get the new ones. */
-const VERSION = 'afterglow-v5';
-const CORE = ['./', 'index.html', 'styles.css', 'js/gl.js', 'js/audio.js', 'js/app.js', 'manifest.webmanifest', 'logo.png', 'icons/icon-64.png', 'icons/icon-192.png', 'icons/icon-512.png'];
+const VERSION = 'afterglow-v6';
+const CORE = ['./', 'index.html', 'styles.css', 'js/gl.js', 'js/audio.js', 'js/app.js', 'manifest.webmanifest', 'logo.png', 'icons/favicon.png', 'icons/favicon-32.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(VERSION).then((c) => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
