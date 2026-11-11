@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Afterglow</title>
+<meta name="description" content="A study timer that grows a glowing particle sculpture from the music you listen to. Watch your focus take shape, one slice at a time. No accounts. No data leaves the browser.">
+<meta name="theme-color" content="#04050b">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Afterglow — Your focus, made visible.">
+<meta property="og:description" content="A study timer that grows a glowing particle sculpture from the music you listen to. One session, one sculpture. Everything stays on your device.">
+<meta property="og:image" content="og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Afterglow — Your focus, made visible.">
+<meta name="twitter:description" content="A study timer that grows a glowing particle sculpture from the music you listen to. One session, one sculpture.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="aura" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="prog" aria-hidden="true"><i id="prog"></i></div>
+
+<header class="nav" id="nav">
+  <a class="mark" href="#top" aria-label="Afterglow, back to top"><img class="logo" src="logo.png" alt="" width="42" height="42"><span>afterglow</span></a>
+  <nav aria-label="Sections">
+    <a href="#how">How it works</a>
+    <a href="#playground">Playground</a>
+    <a href="#gallery">Gallery</a>
+    <a href="#stats">Stats</a>
+  </nav>
+</header>
+
+<main>
+<!-- HERO -->
+<section class="hero" id="top" data-key="sculpt" data-fx="0.46" data-fx-m="0" data-fy="0.06" data-fy-m="0.46" data-s="1.22" data-s-m="0.46" data-repel="1" data-halo="1">
+  <div class="hero-inner" id="heroInner">
+    <p class="eyebrow">Study timer · Sound sculpture</p>
+    <h1><span class="ln"><span>Your focus,</span></span><span class="ln"><span>made visible.</span></span></h1>
+    <p class="lede">Study with sound on. Each session grows one glowing sculpture, shaped by what you heard and how well you stayed with it.</p>
+    <div class="cta">
+      <a class="btn" href="#playground" id="heroStart">Start a session</a>
+      <button class="btn ghost" id="heroListen" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Zm-7 9a7 7 0 0 0 14 0M12 19v3"/></svg>Listen
+      </button>
+      <button class="link" id="heroPlay" type="button">or play a built-in track</button>
+    </div>
+  </div>
+  <dl class="hero-foot specs">
+    <div><dt>240</dt><dd>slices of time in every sculpture</dd></div>
+    <div><dt>16</dt><dd>frequency bands, bass to treble</dd></div>
+    <div><dt>8</dt><dd>built-in tracks, generated as they play</dd></div>
+    <div><dt>0</dt><dd>bytes of audio leave this device</dd></div>
+  </dl>
+  <div class="anno" id="anno" aria-hidden="true">
+    <span><i></i><b>Now</b><em id="annoTrack">Idle preview</em></span>
+    <span><i></i><b>20 seconds ago</b><em>Time runs up the form</em></span>
+  </div>
+</section>
+
+<!-- HOW IT WORKS (pinned, three morphs) -->
+<section class="how" id="how" aria-label="How it works">
+  <i class="key" style="top:17%" data-key="orb" data-fx="0.4" data-fx-m="0" data-fy="0" data-fy-m="0.3" data-s="1" data-s-m="0.6"></i>
+  <i class="key" style="top:50%" data-key="galaxy" data-fx="0.4" data-fx-m="0" data-fy="0" data-fy-m="0.3" data-s="1" data-s-m="0.55" data-tilt="1.0"></i>
+  <i class="key" style="top:83%" data-key="sculpt" data-fx="0.4" data-fx-m="0" data-fy="0" data-fy-m="0.3" data-s="1" data-s-m="0.62"></i>
+  <div class="how-pin">
+    <div class="how-copy">
+      <p class="eyebrow">How it works</p>
+      <div class="steps" id="steps">
+        <article class="step on">
+          <p class="num">01 <i>/ 03</i></p>
+          <h2>Play something.</h2>
+          <p>Pick a built-in track, hold your mic up to the room, or drop in an audio file. One tap and it starts.</p>
+        </article>
+        <article class="step">
+          <p class="num">02 <i>/ 03</i></p>
+          <h2>It listens.</h2>
+          <p>Several times a second, the sound is split into 16 bands from bass to treble. This happens in your browser. No audio leaves it.</p>
+        </article>
+        <article class="step">
+          <p class="num">03 <i>/ 03</i></p>
+          <h2>It grows.</h2>
+          <p>Each moment becomes a slice and time runs up the form. Change track and the colour shifts. Drift off and that height keeps a notch.</p>
+        </article>
+      </div>
+      <div class="rail" aria-hidden="true"><i id="rail"></i></div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee" aria-hidden="true"><div id="marq">One session. One sculpture. One session. One sculpture. One session. One sculpture. One session. One sculpture. One session. One sculpture. One session. One sculpture.</div></div>
+
+<!-- PLAYGROUND -->
+<section class="play" id="playground">
+  <div class="stage" id="stage" data-key="sculpt" data-fx="-0.3" data-fx-m="0" data-fy="0.04" data-fy-m="0.3" data-s="1.1" data-s-m="0.5" data-repel="0.6">
+    <div class="hud" id="hud">
+      <p class="mono" id="hudLabel">Live preview · follows whatever is playing</p>
+      <p class="clock" id="clock">25:00</p>
+      <p class="mono status" id="status">Drag to turn it</p>
+    </div>
+  </div>
+
+  <div class="panel rv" id="panel">
+    <!-- setup -->
+    <div class="pstate" id="setup">
+      <p class="eyebrow">Playground</p>
+      <h2>Grow one now.</h2>
+      <fieldset>
+        <legend>Session length</legend>
+        <div class="row">
+          <div class="stepper"><button type="button" data-len="-5" aria-label="5 minutes less">−</button><label><input id="lenMin" type="number" min="1" max="240" value="25" inputmode="numeric" aria-label="Session length in minutes"><span>min</span></label><button type="button" data-len="5" aria-label="5 minutes more">+</button></div>
+          <div class="chips" id="lenChips">
+            <button type="button" class="chip on" data-min="25">25</button>
+            <button type="button" class="chip" data-min="50">50</button>
+            <button type="button" class="chip" data-min="90">90</button>
+            <button type="button" class="chip" data-min="1">1 min demo</button>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Break length</legend>
+        <div class="row">
+          <div class="stepper"><button type="button" data-brk="-1" aria-label="1 minute less">−</button><label><input id="brkMin" type="number" min="1" max="60" value="5" inputmode="numeric" aria-label="Break length in minutes"><span>min</span></label><button type="button" data-brk="1" aria-label="1 minute more">+</button></div>
+          <p class="note">Used when you tap Take a break. You can change it mid-break too.</p>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Subject</legend>
+        <div class="chips" id="subjChips"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Sound</legend>
+        <div class="tracks" data-tracks></div>
+        <div class="row">
+          <button type="button" class="chip" data-mic><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Zm-7 9a7 7 0 0 0 14 0M12 19v3"/></svg>Listen with mic</button>
+          <label class="chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 20h14"/></svg>Upload audio<input type="file" accept="audio/*" data-upload hidden></label>
+          <button type="button" class="chip" data-tab hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3zM3 10h18M7 6V4h6v2"/></svg>Use another tab's sound</button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Where are you studying?</legend>
+        <div class="seg" id="modeSeg" role="radiogroup" aria-label="Where are you studying">
+          <button type="button" role="radio" aria-checked="true" class="on" data-mode="here">In this tab</button>
+          <button type="button" role="radio" aria-checked="false" data-mode="elsewhere">Somewhere else</button>
+        </div>
+        <p class="note" id="modeNote"></p>
+        <p class="note" id="phoneNote" hidden>On a phone, keep this tab open and in front. Phones pause background tabs, and the sound stops with them.</p>
+        <div class="row tight">
+          <label class="mini" for="idleSel">Count me idle after</label>
+          <select id="idleSel"><option value="2">2 min</option><option value="5" selected>5 min</option><option value="10">10 min</option><option value="20">20 min</option></select>
+          <label class="tog"><input type="checkbox" id="notifyChk"><span>Notify me for check-ins</span></label>
+          <label class="tog" id="wakeTog"><input type="checkbox" id="wakeChk"><span>Keep the screen awake</span></label>
+        </div>
+      </fieldset>
+      <details class="shape">
+        <summary>Shape</summary>
+        <div class="sliders">
+          <label for="twist">Twist</label><input id="twist" type="range" min="0" max="3" step="0.05" value="1.1">
+          <label for="psize">Glow</label><input id="psize" type="range" min="0.6" max="1.8" step="0.05" value="1">
+        </div>
+      </details>
+      <button class="btn wide" id="startBtn" type="button">Start session</button>
+      <p class="note" id="examLine"></p>
+      <fieldset class="team">
+        <legend>Study with others</legend>
+        <div class="row">
+          <input id="myName" type="text" maxlength="16" placeholder="Your name" aria-label="Your name">
+          <input id="roomName" type="text" maxlength="24" placeholder="Room name" aria-label="Room name">
+        </div>
+        <div class="row">
+          <label class="mini" for="roomDelay">Starts in</label>
+          <select id="roomDelay"><option value="1">1 min</option><option value="2">2 min</option><option value="5" selected>5 min</option><option value="10">10 min</option><option value="15">15 min</option></select>
+          <button type="button" class="chip" id="roomCreate">Create a room</button>
+        </div>
+        <div class="row">
+          <input id="roomCode" type="text" placeholder="Paste a room code" aria-label="Room code" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button type="button" class="chip" id="roomJoin">Join</button>
+        </div>
+        <p class="note">Everyone with the code gets the same timer, starting and ending at the same moment. There is no server: the code carries the start time, so you can't see each other live. Swap result codes afterwards to compare.</p>
+      </fieldset>
+    </div>
+
+    <!-- team lobby -->
+    <div class="pstate" id="lobby" hidden>
+      <p class="eyebrow">Team session</p>
+      <h2 id="lobbyName">Room</h2>
+      <div class="bignum">
+        <div><span class="mono">Starts in</span><b id="lobbyClock">0:00</b></div>
+        <div><span class="mono">Length</span><b id="lobbyLen">25m</b></div>
+      </div>
+      <div class="codebox"><code id="lobbyCode"></code></div>
+      <div class="btns">
+        <button class="btn" id="lobbyCopyLink" type="button">Copy invite link</button>
+        <button class="btn ghost" id="lobbyCopyCode" type="button">Copy code</button>
+        <button class="btn ghost danger" id="lobbyLeave" type="button">Leave</button>
+      </div>
+      <p class="note">Send the link or the code to your group. Keep this tab open: your session starts by itself when the countdown ends. Pick your own sound; audio isn't shared.</p>
+    </div>
+
+    <!-- running -->
+    <div class="pstate" id="running" hidden>
+      <p class="eyebrow" id="runSubj">Session</p>
+      <div class="bignum">
+        <div><span class="mono">Focus score</span><b id="scoreNum">100</b></div>
+        <div><span class="mono">Distractions</span><b id="distNum">0</b></div>
+      </div>
+      <div class="meter"><i id="growBar"></i></div>
+      <p class="mono" id="runMeta">0% grown</p>
+      <div class="tracks" data-tracks></div>
+      <div class="btns">
+        <button class="btn ghost" id="pauseBtn" type="button">Pause</button>
+        <button class="btn ghost" id="breakBtn" type="button">Take a break</button>
+        <button class="btn ghost" id="extendBtn" type="button">+5 min</button>
+        <button class="btn ghost" id="floatBtn" type="button">Float timer</button>
+        <button class="btn ghost danger" id="endBtn" type="button">End session</button>
+      </div>
+      <p class="note" id="runNote"></p>
+    </div>
+
+    <!-- done -->
+    <div class="pstate" id="done" hidden>
+      <p class="eyebrow">Session complete</p>
+      <h2 id="doneTitle">One more for the shelf.</h2>
+      <div class="bignum">
+        <div><span class="mono">Focus score</span><b id="doneScore">0</b></div>
+        <div><span class="mono">Focused</span><b id="doneMin">0</b></div>
+        <div><span class="mono">Distractions</span><b id="doneDist">0</b></div>
+      </div>
+      <div class="btns">
+        <button class="btn" id="replayBtn" type="button">Replay growth · 10 s</button>
+        <button class="btn ghost" id="shareBtn" type="button">Make share card</button>
+        <button class="btn ghost" id="againBtn" type="button">New session</button>
+      </div>
+      <p class="note" id="doneNote">Saved to your gallery in this browser.</p>
+      <div class="board" id="board" hidden>
+        <p class="mono" id="boardTitle">Team board</p>
+        <ol id="boardList"></ol>
+        <div class="codebox"><code id="myResult"></code></div>
+        <div class="row">
+          <button type="button" class="chip" id="copyResult">Copy my result code</button>
+        </div>
+        <div class="row">
+          <input id="mateCode" type="text" placeholder="Paste a teammate's result code" aria-label="Teammate result code" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button type="button" class="chip" id="mateAdd">Add</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section class="sec" id="gallery" data-key="dust" data-s="1.15">
+  <header class="sec-head rv">
+    <p class="eyebrow">Gallery</p>
+    <h2>Every session leaves one.</h2>
+    <p class="lede sm">Stored in this browser only. Open one to replay how it grew.</p>
+  </header>
+  <div class="grid" id="galGrid"></div>
+</section>
+
+<!-- STATS -->
+<section class="sec" id="stats">
+  <header class="sec-head rv" data-key="dust" data-s="2">
+    <p class="eyebrow">Focus stats</p>
+    <h2>The week in numbers.</h2>
+    <p class="lede sm" id="sampleNote" hidden>Sample data. Finish a session and these become yours.</p>
+  </header>
+  <div class="tiles rv" id="tiles">
+    <article class="tile wide2">
+      <h3>Focused minutes per day</h3>
+      <div class="bars" id="dayBars"></div>
+    </article>
+    <article class="tile">
+      <h3>Distractions</h3>
+      <p class="big" id="stDist">0</p>
+      <p class="mono" id="stDistSub"></p>
+    </article>
+    <article class="tile">
+      <h3>Best track</h3>
+      <p class="big sm" id="stTrack">–</p>
+      <p class="mono" id="stTrackSub"></p>
+    </article>
+    <article class="tile wide2">
+      <h3>Focus by subject</h3>
+      <div class="hbars" id="subjBars"></div>
+    </article>
+    <article class="tile wide2 exam">
+      <h3>Exam countdown</h3>
+      <p class="big" id="examBig">–</p>
+      <p class="mono" id="examSub">Set a date and it shows up here and before each session.</p>
+      <form class="row" id="examForm">
+        <input id="examName" type="text" maxlength="30" placeholder="Exam name" aria-label="Exam name">
+        <input id="examDate" type="date" aria-label="Exam date">
+        <button class="chip" type="submit">Save</button>
+      </form>
+    </article>
+  </div>
+
+  <div class="garden" id="garden" data-key="garden" data-fy="-0.05" data-fy-m="-0.3" data-s="0.95" data-s-m="0.31" data-tilt="0.26" data-spin="0" data-repel="0">
+    <header class="rv">
+      <p class="eyebrow">Sculpture garden</p>
+      <h2>Seven days, planted.</h2>
+      <p class="lede sm">One sculpture for each day you studied. Longer days grow taller. Drag to turn.</p>
+    </header>
+  </div>
+  <div class="glabels" id="glabels" aria-hidden="true"></div>
+</section>
+
+<!-- MAKER NOTE -->
+<section class="maker" id="maker" data-key="ring" data-s="1.7" data-s-m="0.9" data-tilt="1.15">
+  <div class="paper rv">
+    <p class="eyebrow">Maker note</p>
+    <h2>Why this exists.</h2>
+    <div class="notebody">
+      <p>I think it's cool to watch music turn into art. Afterglow takes whatever I'm listening to while I study and builds a sculpture out of it, one slice at a time.</p>
+      <p>The catch is that the piece only finishes if I do. Stop early and it stays half grown. Wanting to see the whole thing is what keeps me at my desk.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot" data-key="orb" data-fy="-0.7" data-s="1.5" data-s-m="0.9">
+  <p class="giant" aria-hidden="true">afterglow</p>
+  <div class="foot-row">
+    <p>Everything stays on this device. No accounts, no analytics, no audio leaves the browser.</p>
+    <div class="row">
+      <a class="link" href="#top">Back to top</a>
+      <button class="link" id="backupBtn" type="button">Back up</button>
+      <label class="link" tabindex="0" id="restoreLbl">Restore<input type="file" accept="application/json,.json" id="restoreIn" hidden></label>
+      <button class="link" id="clearBtn" type="button">Clear local data</button>
+    </div>
+  </div>
+</footer>
+
+<!-- MINI PLAYER -->
+<aside class="player" id="player" aria-label="Sound">
+  <div class="plist" id="plist" hidden>
+    <div class="tracks" data-tracks></div>
+    <div class="row">
+      <button type="button" class="chip" data-mic><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Zm-7 9a7 7 0 0 0 14 0M12 19v3"/></svg>Mic</button>
+      <label class="chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 20h14"/></svg>Upload<input type="file" accept="audio/*" data-upload hidden></label>
+      <button type="button" class="chip" data-tab hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3zM3 10h18M7 6V4h6v2"/></svg>Tab</button>
+      <label class="vol"><span class="sr">Volume</span><input id="vol" type="range" min="0" max="1" step="0.01" value="0.8"></label>
+    </div>
+  </div>
+  <div class="pbar">
+    <button type="button" class="pbtn main" id="pToggle" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="pIcon" d="M8 5v14l11-7z"/></svg></button>
+    <button type="button" class="pname" id="pOpen" aria-expanded="false" aria-controls="plist">
+      <b id="pName">Night Desk</b><span id="pMood">Tap to play</span>
+    </button>
+    <canvas id="pBars" width="96" height="36" aria-hidden="true"></canvas>
+    <button type="button" class="pbtn" id="pNext" aria-label="Next track"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14l9-7zM17 5h2v14h-2z"/></svg></button>
+  </div>
+</aside>
+
+<!-- DOCKED MINI TIMER (also the fallback when a floating window is not available) -->
+<aside class="dock" id="dock" hidden aria-label="Session timer">
+  <b id="dockClock">25:00</b><span class="mono" id="dockScore">100</span>
+  <button type="button" class="pbtn" id="dockPause" aria-label="Pause or resume"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
+  <a class="pbtn" href="#playground" aria-label="Go to session"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+</aside>
+
+<!-- VIEWER (gallery item, replay) -->
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Sculpture">
+  <button class="pbtn close" id="vClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="vinfo">
+    <p class="eyebrow" id="vDate"></p>
+    <h2 id="vSubj"></h2>
+    <div class="bignum">
+      <div><span class="mono">Focus score</span><b id="vScore"></b></div>
+      <div><span class="mono">Focused</span><b id="vMin"></b></div>
+      <div><span class="mono">Distractions</span><b id="vDist"></b></div>
+    </div>
+    <p class="mono" id="vTracks"></p>
+    <p class="note" id="vTeam" hidden></p>
+    <div class="btns">
+      <button class="btn" id="vReplay" type="button">Replay growth · 10 s</button>
+      <button class="btn ghost" id="vShare" type="button">Make share card</button>
+      <button class="btn ghost danger" id="vDelete" type="button">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE CARD -->
+<div class="modal" id="cardModal" hidden role="dialog" aria-modal="true" aria-label="Share card">
+  <div class="sheet">
+    <img id="cardImg" alt="Share card showing your sculpture, subject, minutes and focus score">
+    <div class="btns">
+      <button class="btn" id="cardSave" type="button">Save image</button>
+      <button class="btn ghost" id="cardShare" type="button" hidden>Share…</button>
+      <button class="btn ghost" id="cardClose" type="button">Close</button>
+    </div>
+    <p class="note">On a phone you can also press and hold the image to save it.</p>
+  </div>
+</div>
+
+<!-- BREAK -->
+<div class="break" id="break" hidden role="dialog" aria-modal="true" aria-label="Break">
+  <canvas id="breathCv" width="640" height="640" aria-hidden="true"></canvas>
+  <p class="btxt" id="breathTxt" aria-live="polite">Breathe in</p>
+  <div class="bphase" aria-hidden="true"><i id="breathBar"></i></div>
+  <p class="clock sm" id="breakClock">5:00</p>
+  <div class="row center">
+    <button type="button" class="chip" data-badd="-1" aria-label="1 minute less">− 1 min</button>
+    <button type="button" class="chip" data-bset="3">3</button>
+    <button type="button" class="chip" data-bset="5">5</button>
+    <button type="button" class="chip" data-bset="10">10</button>
+    <button type="button" class="chip" data-bset="15">15</button>
+    <button type="button" class="chip" data-badd="1" aria-label="1 minute more">+ 1 min</button>
+  </div>
+  <button class="btn" id="breakEnd" type="button">Back to it</button>
+</div>
+
+<!-- CHECK-IN -->
+<div class="checkin" id="checkin" hidden role="alertdialog" aria-label="Check-in">
+  <p><b id="checkTitle">25 minutes in.</b> Still with it?</p>
+  <div class="row">
+    <button class="btn sm" id="checkYes" type="button">Yes, focused</button>
+    <button class="btn sm ghost" id="checkNo" type="button">I drifted</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/gl.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
