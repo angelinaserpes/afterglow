@@ -38,7 +38,7 @@
   /* ---------- per-particle constants ---------- */
   const T = new Float32Array(N), CX = new Float32Array(N), SZ = new Float32Array(N), U = new Float32Array(N),
     SH = new Float32Array(N), JY = new Float32Array(N), SCX = new Float32Array(N), SCY = new Float32Array(N),
-    SCZ = new Float32Array(N), RS = new Float32Array(N);
+    SCZ = new Float32Array(N), RS = new Float32Array(N), ANG = new Float32Array(N);
   const seeds = new Float32Array(N * 4);
   for (let i = 0; i < N; i++) {
     // an even lattice over height and angle (R2 sequence): no clumps, and any prefix still covers the whole form
@@ -46,7 +46,7 @@
     const th = ((0.5 + i * 0.5698402909980532) % 1) * Math.PI * 2;
     const m = Math.abs((((th * 3) / (Math.PI * 2)) % 1) * 2 - 1); // three mirrored lobes: bass at the tips
     U[i] = (1 - m) * (B - 1);
-    CX[i] = Math.cos(th); SZ[i] = Math.sin(th);
+    CX[i] = Math.cos(th); SZ[i] = Math.sin(th); ANG[i] = th;
     SH[i] = R() < 0.14 ? 0.2 + 0.7 * R() : 1;       // most particles sit exactly on the surface
     JY[i] = 0;
     const a = R() * Math.PI * 2, d = 0.25 + R() * 0.9;
@@ -55,8 +55,33 @@
   }
 
   /* ---------- sculpture generator (shared by WebGL and the 2D thumbnails) ----------
-     d = { bands: Uint8Array(S*B), hue: Uint8Array(S), flag: Uint8Array(S) } */
-  const notch = new Float32Array(S), lo = new Float32Array(S * 3), hi = new Float32Array(S * 3), sA = new Float32Array(S * B), sV = new Float32Array(S * B);
+     d = { bands: Uint8Array(S*B), hue: Uint8Array(S), flag: Uint8Array(S) }
+     flag byte: bit 7 = drifted here, bits 0-3 = form style (the vibe of the sound at that moment).
+     Older saves used 255 for "drifted", which decodes as drifted + style 15 = classic. */
+  /* Each vibe carves the surface differently:
+     amp = how strongly the spectrum pushes the surface, lobes/lobeAmt/spin = soft petals that can spiral,
+     facet = flat crystal sides, spikes/spikeAmt = sharp ridges, rib = stacked rings, size = overall scale */
+  const FORMS = [
+    { amp: 1 },                                                   // 0 classic
+    { amp: 0.4, size: 1.06 },                                     // 1 calm: smooth, rounded
+    { amp: 0.85, lobes: 3, lobeAmt: 0.22, spin: 3 },             // 2 chill: three soft petals, slow drift
+    { amp: 1.3, lobes: 2, lobeAmt: 0.3, size: 1.04 },            // 3 bass: heavy, wide, two big lobes
+    { amp: 0.9, facet: 6, steps: 6 },                             // 4 electronic: hexagonal crystal, terraced
+    { amp: 1.15, spikes: 9, spikeAmt: 0.45, spin: 30 },          // 5 heavy: twisting spikes
+    { amp: 0.8, lobes: 6, lobeAmt: 0.15, spin: 16 },             // 6 acoustic: fluted spiral
+    { amp: 0.9, rib: 0.34 },                                      // 7 voice: stacked rings, like syllables
+    { amp: 0.5, size: 0.82 },                                     // 8 quiet room: small and still
+  ];
+  for (let k = FORMS.length; k < 16; k++) FORMS[k] = FORMS[0];
+  function formAt(st, i, t) {
+    const F = FORMS[st]; let f = F.size || 1; const a = ANG[i];
+    if (F.lobes) f *= 1 + F.lobeAmt * Math.cos(F.lobes * a + (F.spin || 0) * t);
+    if (F.facet) { const w = (Math.PI * 2) / F.facet; f *= Math.cos(w / 2) / Math.cos((((a % w) + w) % w) - w / 2); }
+    if (F.spikes) f *= 1 + F.spikeAmt * Math.pow(Math.abs(Math.cos((F.spikes * a) / 2 + (F.spin || 0) * t)), 10);
+    if (F.rib) f *= 1 - F.rib * Math.pow(0.5 + 0.5 * Math.cos(t * S * 0.3), 3);
+    return f;
+  }
+  const notch = new Float32Array(S), styl = new Uint8Array(S), lo = new Float32Array(S * 3), hi = new Float32Array(S * 3), sA = new Float32Array(S * B), sV = new Float32Array(S * B);
   function fillSculpt(d, P, C, n) {
     const flag = d.flag, hue = d.hue, raw = d.bands, bands = sV;
     // soften the raw spectrum across bands and across time so the surface reads as one carved form
@@ -67,9 +92,11 @@
       const u = s > 0 ? s - 1 : s, v = s < S - 1 ? s + 1 : s; sV[s * B + b] = (sA[u * B + b] + 2 * sA[s * B + b] + sA[v * B + b]) * 0.25;
     }
     for (let s = 0; s < S; s++) {
-      const f0 = flag[s], f1 = Math.max(flag[s > 0 ? s - 1 : s], flag[s < S - 1 ? s + 1 : s]),
-        f2 = Math.max(flag[s > 1 ? s - 2 : s], flag[s < S - 2 ? s + 2 : s]);
+      const dr = (k) => (flag[k] & 128 ? 1 : 0);
+      const f0 = dr(s), f1 = Math.max(dr(s > 0 ? s - 1 : s), dr(s < S - 1 ? s + 1 : s)),
+        f2 = Math.max(dr(s > 1 ? s - 2 : s), dr(s < S - 2 ? s + 2 : s));
       notch[s] = Math.max(f0, f1 * 0.7, f2 * 0.3);
+      styl[s] = flag[s] & 15;
       const h = (hue[s] * 360) / 255;
       hsl(h, 0.9, 0.2, lo, s * 3);
       hsl(h - 28, 0.95, 0.62, hi, s * 3);
@@ -79,10 +106,13 @@
       const u = U[i], b0 = u | 0, b1 = b0 < B - 1 ? b0 + 1 : b0, kb = u - b0;
       const a0 = bands[s0 * B + b0] * (1 - kb) + bands[s0 * B + b1] * kb;
       const a1 = bands[s1 * B + b0] * (1 - kb) + bands[s1 * B + b1] * kb;
-      const a = (a0 * (1 - k) + a1 * k) / 255;
+      const st0 = styl[s0], st1 = styl[s1], amp = FORMS[st0].amp * (1 - k) + FORMS[st1].amp * k;
+      let a = clamp(0.45 + ((a0 * (1 - k) + a1 * k) / 255 - 0.45) * amp, 0, 1);
+      if (FORMS[st0].steps && st0 === st1) a = Math.round(a * FORMS[st0].steps) / FORMS[st0].steps;
       const nt = notch[s0] * (1 - k) + notch[s1] * k;
       const env = 0.5 + 0.5 * Math.sin(Math.PI * Math.pow(t, 0.8));
-      const r = (0.13 + 0.66 * a) * env * SH[i] * (1 - 0.62 * nt);
+      const fm = st0 === st1 ? formAt(st0, i, t) : formAt(st0, i, t) * (1 - k) + formAt(st1, i, t) * k;
+      const r = (0.13 + 0.66 * a) * env * SH[i] * (1 - 0.62 * nt) * fm;
       let x = CX[i] * r, z = SZ[i] * r, y = (t - 0.5) * 2.4 + JY[i], dim = 1;
       if (nt > 0.02 && RS[i] < nt * 0.5) {
         const m = 0.5 + RS[i] * 3.2;
@@ -98,7 +128,7 @@
       }
     }
   }
-  AG.fillSculpt = fillSculpt;
+  AG.fillSculpt = fillSculpt; AG.FORMS = FORMS.length;
   AG.emptyData = () => ({ bands: new Uint8Array(S * B), hue: new Uint8Array(S).fill(152), flag: new Uint8Array(S) });
 
   /* 2D renderer for thumbnails, the share card and the floating mini window */

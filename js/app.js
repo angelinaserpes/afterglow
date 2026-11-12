@@ -32,26 +32,26 @@
   }
 
   /* ---------- examples (clearly labelled, never counted as yours) ---------- */
-  function synth(seed, hues, dist) {
+  function synth(seed, hues, dist, styles) {
     const r = AG.rng(seed), d = AG.emptyData(), ph = r() * 9, ph2 = r() * 9;
     for (let s = 0; s < S; s++) {
       const hi = Math.min(hues.length - 1, Math.floor((s / S) * hues.length));
-      d.hue[s] = Math.round((hues[hi] / 360) * 255);
+      d.hue[s] = Math.round((hues[hi] / 360) * 255); d.flag[s] = styles ? styles[hi] : 0;
       for (let b = 0; b < B; b++) {
         let v = 0.45 + 0.3 * Math.sin(s * 0.06 + b * 0.55 + ph) + 0.2 * Math.sin(s * 0.19 - b * 0.9 + ph2) + 0.12 * (r() - 0.5);
         v *= 1 - b / 40;
         d.bands[s * B + b] = clamp(v, 0.05, 1) * 255;
       }
     }
-    dist.forEach((t) => { const s = Math.floor(t * S); d.flag[s] = 255; if (s + 1 < S) d.flag[s + 1] = 255; });
+    dist.forEach((t) => { const s = Math.floor(t * S); d.flag[s] |= 128; if (s + 1 < S) d.flag[s + 1] |= 128; });
     return d;
   }
   const now0 = Date.now();
   const EXAMPLES = [
-    { id: 'ex1', ts: now0 - DAY * 1 - 3600e3, planned: 3000, focused: 2790, away: 210, score: 88, subject: 'Maths', dist: [0.62], tracks: { 'Night Desk': 1700, 'Rain on Glass': 1300 }, hues: [226, 190], seed: 11 },
-    { id: 'ex2', ts: now0 - DAY * 2 - 7200e3, planned: 1500, focused: 1500, away: 0, score: 100, subject: 'Coding', dist: [], tracks: { 'Slow Tide': 1500 }, hues: [163], seed: 23 },
-    { id: 'ex3', ts: now0 - DAY * 4 - 5000e3, planned: 5400, focused: 4380, away: 1020, score: 71, subject: 'Reading', dist: [0.3, 0.55, 0.8], tracks: { 'Paper Lanterns': 2400, 'Deep Field': 1800, 'Night Desk': 1200 }, hues: [30, 268, 226], seed: 37 },
-  ].map((e) => { e.example = true; cache.set(e.id, synth(e.seed, e.hues, e.dist)); return e; });
+    { id: 'ex1', ts: now0 - DAY * 1 - 3600e3, planned: 3000, focused: 2790, away: 210, score: 88, subject: 'Maths', dist: [0.62], tracks: { 'Night Desk': 1700, 'Rain on Glass': 1300 }, hues: [226, 190], styles: [2, 6], seed: 11 },
+    { id: 'ex2', ts: now0 - DAY * 2 - 7200e3, planned: 1500, focused: 1500, away: 0, score: 100, subject: 'Coding', dist: [], tracks: { 'Slow Tide': 1500 }, hues: [163], styles: [1], seed: 23 },
+    { id: 'ex3', ts: now0 - DAY * 4 - 5000e3, planned: 5400, focused: 4380, away: 1020, score: 71, subject: 'Reading', dist: [0.3, 0.55, 0.8], tracks: { 'Paper Lanterns': 2400, 'Deep Field': 1800, 'Night Desk': 1200 }, hues: [30, 268, 226], styles: [2, 4, 2], seed: 37 },
+  ].map((e) => { e.example = true; cache.set(e.id, synth(e.seed, e.hues, e.dist, e.styles)); return e; });
   const records = () => (db.sessions.length ? db.sessions : EXAMPLES);
 
   /* ---------- toast ---------- */
@@ -61,7 +61,7 @@
   /* ---------- sculpture source: rolling preview / live session / saved view ---------- */
   let mode = 'roll', viewRec = null, hueNow = 215, rollK = 0, rollAcc = 0;
   const roll = AG.emptyData();
-  function hueTarget() { return A.current ? A.current.hue : 212 + 22 * Math.sin(rollK * 0.012); }
+  function hueTarget() { return A.vibe ? A.vibe.hue : A.current ? A.current.hue : 212 + 22 * Math.sin(rollK * 0.012); }
   function stepHue(rate) { let d = ((hueTarget() - hueNow + 540) % 360) - 180; hueNow = (hueNow + d * rate + 360) % 360; }
   function synBand(b, k) {
     let v = 0.42 + 0.3 * Math.sin(k * 0.045 + b * 0.55) + 0.18 * Math.sin(k * 0.11 - b * 0.9) + 0.1 * Math.sin(k * 0.23 + b * 2.1);
@@ -69,7 +69,7 @@
   }
   function rollStep() {
     rollK++; stepHue(0.08);
-    roll.bands.copyWithin(0, B); roll.hue.copyWithin(0, 1);
+    roll.bands.copyWithin(0, B); roll.hue.copyWithin(0, 1); roll.flag.copyWithin(0, 1); roll.flag[S - 1] = A.playing ? A.style : 0;
     const o = (S - 1) * B, live = A.playing;
     for (let b = 0; b < B; b++) roll.bands[o + b] = roll.bands[o + b] * 0.5 + (live ? clamp(0.06 + A.bands[b] * 0.98, 0, 1) : synBand(b, rollK)) * 127.5;
     roll.hue[S - 1] = Math.round((hueNow / 360) * 255);
@@ -140,7 +140,7 @@
   function distraction() {
     const si = Math.min(S - 1, Math.floor((sess.elapsed / sess.planned) * S));
     sess.dist.push(sess.elapsed / sess.planned);
-    sess.data.flag[si] = 255; if (si + 1 < S) sess.data.flag[si + 1] = 255;
+    sess.data.flag[si] |= 128; if (si + 1 < S) sess.data.flag[si + 1] |= 128;
     V.shock = 1;
   }
   function tick() {
@@ -161,13 +161,13 @@
     const bands = A.sample(); stepHue(0.3);
     const si = Math.min(S - 1, Math.floor((sess.elapsed / sess.planned) * S)), d = sess.data, hb = Math.round((hueNow / 360) * 255);
     for (let s = Math.max(0, sess.lastSi + 1); s <= si; s++) {
-      sess.cnt = 0; d.hue[s] = hb; if (sess.ep) d.flag[s] = 255;
+      sess.cnt = 0; d.hue[s] = hb; d.flag[s] = (A.playing ? A.style : 0) | (sess.ep ? 128 : 0);
       for (let b = 0; b < B; b++) d.bands[s * B + b] = (A.playing ? clamp(0.06 + bands[b], 0, 1) : 0.07) * 255;
     }
     sess.cnt++;
     for (let b = 0; b < B; b++) { const i = si * B + b, v = (A.playing ? clamp(0.06 + bands[b], 0, 1) : 0.07) * 255; d.bands[i] += (v - d.bands[i]) / sess.cnt; }
     sess.lastSi = si;
-    if (A.current) sess.tracks[A.current.name] = (sess.tracks[A.current.name] || 0) + dt;
+    if (A.current) { const k = A.label; sess.tracks[k] = (sess.tracks[k] || 0) + dt; }
 
     // check-ins
     if (!sess.check && sess.elapsed - sess.lastCheck >= CHECK_EVERY && sess.planned - sess.elapsed > 60) openCheckin();
@@ -681,7 +681,7 @@
     $$('[data-tab]').forEach((b) => b.classList.toggle('on', !!(cur && cur.kind === 'tab')));
     const t = A.TRACKS[A.lastTrack];
     $('#pName').textContent = cur ? cur.name : t.name;
-    $('#pMood').textContent = cur ? (cur.kind === 'track' ? A.TRACKS[cur.idx].mood : cur.kind === 'mic' ? 'Listening · not recorded' : cur.kind === 'tab' ? 'Read here · not recorded' : 'Your file · looping') : 'Tap to play';
+    $('#pMood').textContent = cur ? (cur.kind === 'track' ? A.TRACKS[cur.idx].mood : (A.vibe ? 'Vibe: ' + A.vibe.name + ' · ' : 'Reading the vibe… · ') + (cur.kind === 'file' ? 'looping' : 'not recorded')) : 'Tap to play';
     $('#pIcon').setAttribute('d', cur ? 'M7 5h4v14H7zM13 5h4v14h-4z' : 'M8 5v14l11-7z'); $('#pToggle').setAttribute('aria-label', cur ? 'Stop' : 'Play');
   }
   function bindSound() {

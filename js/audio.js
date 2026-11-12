@@ -7,7 +7,8 @@
   let ctx = null, pre, master, analyser, reverb, fft, vol = 0.8;
   let cur = null;          // { kind:'track'|'mic'|'file', idx, name, hue, stop() }
   const listeners = [];
-  const emit = () => listeners.forEach((f) => f(cur));
+  let srcRef = null;
+  const emit = () => { if (cur !== srcRef) { srcRef = cur; resetVibe(); } listeners.forEach((f) => f(cur)); };
 
   const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -128,7 +129,7 @@
 
   /* Each track: { name, hue, mood, bpm, cutoff, init(K), step(K, i, t, spb) } — step is called once per 16th note */
   const TRACKS = [
-    { name: 'Night Desk', icon: 'desk', mood: 'Lofi · 72 bpm', hue: 226, bpm: 72, cutoff: 3200,
+    { name: 'Night Desk', style: 2, icon: 'desk', mood: 'Lofi · 72 bpm', hue: 226, bpm: 72, cutoff: 3200,
       chords: [[50, 57, 60, 64, 65], [43, 53, 57, 59, 64], [48, 55, 59, 62, 64], [45, 55, 60, 64, 67]],
       init(K) { K.loop('crackle', 0.5, 'highpass', 1200); },
       step(K, i, t, s) {
@@ -140,7 +141,7 @@
         if (p % 2 === 0 || Math.random() < 0.2) K.hit(t + sw, p % 4 === 2 ? 0.05 : 0.028, 'highpass', 7500, 0.04);
         if (p % 4 === 2 && Math.random() < 0.3) K.keys(pick(ch.slice(2)) + 12, t + sw, s * 4, 0.035);
       } },
-    { name: 'Rain on Glass', icon: 'rain', mood: 'Rain · slow piano', hue: 190, bpm: 60, cutoff: 9000,
+    { name: 'Rain on Glass', style: 6, icon: 'rain', mood: 'Rain · slow piano', hue: 190, bpm: 60, cutoff: 9000,
       chords: [[53, 57, 60, 64], [57, 60, 64, 67], [50, 57, 60, 65], [48, 55, 59, 64]],
       init(K) { K.loop('white', 0.075, 'highpass', 2200); const b = K.loop('pink', 0.3, 'lowpass', 900); K.lfo(b.g.gain, 0.07, 0.1); },
       step(K, i, t, s) {
@@ -149,7 +150,7 @@
         if (i % 4 === 0 && Math.random() < 0.42) K.keys(pick(ch) + pick([12, 12, 24]), t + Math.random() * 0.05, s * 10, 0.05);
         if (Math.random() < 0.05) K.pluck(pick(ch) + 24, t, 0.025);
       } },
-    { name: 'Slow Tide', icon: 'tide', mood: 'Ambient · drone', hue: 163, bpm: 60, cutoff: 6000,
+    { name: 'Slow Tide', style: 1, icon: 'tide', mood: 'Ambient · drone', hue: 163, bpm: 60, cutoff: 6000,
       init(K) {
         [38, 45, 50, 54].forEach((m, k) => { const d = K.drone(mtof(m), 'sawtooth', 0.05, 500, 7 + k); K.lfo(d.f.frequency, 0.03 + k * 0.017, 320); });
         const sea = K.loop('pink', 0.22, 'lowpass', 700); K.lfo(sea.g.gain, 0.09, 0.2); K.lfo(sea.f.frequency, 0.09, 400);
@@ -157,7 +158,7 @@
       step(K, i, t, s) {
         if (i % 16 === 0 && Math.random() < 0.55) K.note(mtof(pick([62, 66, 69, 74, 76])), t, s * 30, { gain: 0.03, attack: s * 10, sustain: true, release: s * 12, wet: 1 });
       } },
-    { name: 'Paper Lanterns', icon: 'lantern', mood: 'Lofi · 84 bpm', hue: 30, bpm: 84, cutoff: 4200,
+    { name: 'Paper Lanterns', style: 2, icon: 'lantern', mood: 'Lofi · 84 bpm', hue: 30, bpm: 84, cutoff: 4200,
       chords: [[48, 55, 59, 64], [52, 55, 59, 62], [53, 57, 60, 64], [55, 59, 62, 64]],
       scale: [60, 62, 64, 67, 69, 72, 74, 76],
       init(K) { K.loop('crackle', 0.35, 'highpass', 1500); },
@@ -170,7 +171,7 @@
         if (p === 4 || p === 12) K.hit(t, 0.1, 'bandpass', 2100, 0.12);
         if (p % 2 === 0) K.hit(t + sw, 0.022, 'highpass', 8000, 0.03);
       } },
-    { name: 'Deep Field', icon: 'field', mood: 'Space · bells', hue: 268, bpm: 60, cutoff: 10000,
+    { name: 'Deep Field', style: 4, icon: 'field', mood: 'Space · bells', hue: 268, bpm: 60, cutoff: 10000,
       init(K) {
         K.drone(mtof(36), 'sine', 0.16, 300, 3);
         [60, 67, 74, 76].forEach((m, k) => { const d = K.drone(mtof(m), 'sine', 0.022, 4000, 4); K.lfo(d.g.gain, 0.05 + k * 0.03, 0.018); });
@@ -179,14 +180,14 @@
       step(K, i, t) {
         if (i % 8 === 0 && Math.random() < 0.5) { const m = pick([72, 74, 79, 81, 84, 86, 88]); K.bell(m, t, 0.05); K.bell(m, t + 0.42, 0.02); K.bell(m, t + 0.84, 0.009); }
       } },
-    { name: 'Brown Noise', icon: 'noise', mood: 'Noise · steady', hue: 208, bpm: 60, cutoff: 12000,
+    { name: 'Brown Noise', style: 3, icon: 'noise', mood: 'Noise · steady', hue: 208, bpm: 60, cutoff: 12000,
       init(K) { K.loop('brown', 0.5, 'lowpass', 650); K.loop('pink', 0.05, 'lowpass', 2500); K.drone(55, 'sine', 0.03, 200, 2); },
       step() {} },
-    { name: 'Gamma 40 Binaural', icon: 'phones', mood: '40 Hz · headphones', hue: 338, bpm: 60, cutoff: 9000,
+    { name: 'Gamma 40 Binaural', style: 7, icon: 'phones', mood: '40 Hz · headphones', hue: 338, bpm: 60, cutoff: 9000,
       // 200 Hz in the left ear, 240 Hz in the right: the 40 Hz difference only exists with headphones on
       init(K) { K.stereo(200, -1, 0.16); K.stereo(240, 1, 0.16); K.loop('pink', 0.09, 'lowpass', 1400); K.loop('brown', 0.16, 'lowpass', 500); },
       step(K, i, t, s) { if (i % 64 === 0) K.pad([50, 57, 62], t, s * 60, 0.014, 'sine', 900); } },
-    { name: 'Gamma 40 Pulse', icon: 'pulse', mood: '40 Hz · speakers ok', hue: 52, bpm: 60, cutoff: 9000,
+    { name: 'Gamma 40 Pulse', style: 5, icon: 'pulse', mood: '40 Hz · speakers ok', hue: 52, bpm: 60, cutoff: 9000,
       // a soft chord pulsed 40 times a second, audible on any speaker
       init(K) { K.pulse([220, 330, 440], 40, 0.075); K.loop('pink', 0.1, 'lowpass', 1600); K.loop('brown', 0.14, 'lowpass', 500); },
       step(K, i, t, s) { if (i % 64 === 0) K.pad([45, 57, 64], t, s * 60, 0.014, 'sine', 900); } },
@@ -293,8 +294,61 @@
       for (let b = 0; b < B; b++) { const v = Math.min(1, raw[b] / peak); out[b] += (v - out[b]) * 0.35; lv += out[b]; }
       A.level = lv / B;
       A.bass = (out[0] + out[1] + out[2] + out[3]) / 4; A.mid = (out[5] + out[6] + out[7] + out[8] + out[9]) / 5; A.high = (out[11] + out[12] + out[13] + out[14]) / 4;
+      if (cur.kind !== 'track') listen(out);
       return out;
     },
+    /* The vibe of live sound (mic, another tab, your own file). Built-in tracks have a fixed style. */
+    get VIBES() { return VIBES; },
+    get vibe() { return cur && cur.kind !== 'track' ? vibe : null; },
+    get style() { return !cur ? 0 : cur.kind === 'track' ? TRACKS[cur.idx].style || 0 : vibe ? vibe.id : 0; },
+    get label() { return !cur ? '' : cur.kind === 'track' ? cur.name : cur.name + (vibe ? ' · ' + vibe.name : ''); },
   });
   const raw = new Float32Array(B); let peak = 0.3;
+
+  /* ---------- vibe detection ----------
+     Not genre recognition: it reads the character of the sound (how bright it is, how much bass,
+     how often beats land, how much the loudness swings) and picks the closest of seven vibes. */
+  const VIBES = [
+    null,
+    { id: 1, name: 'Calm', hue: 165,       f: [0.28, 0.48, 0.06, 0.05, 0.10] },
+    { id: 2, name: 'Chill', hue: 28,       f: [0.34, 0.38, 0.12, 0.35, 0.30] },
+    { id: 3, name: 'Bass', hue: 278,       f: [0.22, 0.62, 0.07, 0.45, 0.40] },
+    { id: 4, name: 'Electronic', hue: 190, f: [0.42, 0.48, 0.24, 0.72, 0.30] },
+    { id: 5, name: 'Heavy', hue: 352,      f: [0.55, 0.28, 0.40, 0.60, 0.12] },
+    { id: 6, name: 'Acoustic', hue: 44,    f: [0.46, 0.18, 0.18, 0.28, 0.50] },
+    { id: 7, name: 'Voice', hue: 318,      f: [0.42, 0.10, 0.08, 0.55, 0.75] },
+    { id: 8, name: 'Quiet room', hue: 218 },
+  ];
+  const W = [1.3, 1.3, 1.3, 1.6, 0.7];
+  const prev = new Float32Array(B);
+  const votes = new Float32Array(VIBES.length);
+  let vibe = null, lastT = 0, evalT = 0, lastOn = 0, ons = 0, warm = 0;
+  let fluxAvg = 0.02, rate = 0, loud = 0.1, lvAvg = 0.3, dyn = 0.2, cen = 0.35, bR = 0.3, hR = 0.1;
+  function resetVibe() { vibe = null; votes.fill(0); ons = 0; rate = 0; loud = 0; dyn = 0.2; lvAvg = A.level; fluxAvg = 0.02; cen = 0.35; bR = 0.3; hR = 0.1; evalT = 0; warm = 0; prev.fill(0); }
+  function listen(out) {
+    const now = performance.now(); if (now - lastT < 30) return; lastT = now;
+    let flux = 0, absLv = 0, cw = 0, cs = 0;
+    for (let b = 0; b < B; b++) { const d = raw[b] - prev[b]; if (d > 0) flux += d; prev[b] = raw[b]; absLv += raw[b]; cw += out[b] * b; cs += out[b]; }
+    absLv /= B;
+    if (flux > fluxAvg * 1.6 + 0.04 && now - lastOn > 130) { ons++; lastOn = now; }
+    fluxAvg += (flux - fluxAvg) * 0.05;
+    loud += (absLv - loud) * (warm < 6 ? 0.15 : 0.03);
+    const e = A.bass + A.mid + A.high + 1e-4;
+    const q = warm < 6 ? 0.12 : 0.05;   // settle quickly on a new source, then smooth
+    cen += (cw / (cs + 1e-4) / (B - 1) - cen) * q; bR += (A.bass / e - bR) * q; hR += (A.high / e - hR) * q;
+    lvAvg += (A.level - lvAvg) * (warm < 6 ? 0.2 : 0.03); if (warm >= 3) dyn += (Math.min(1, Math.abs(A.level - lvAvg) * 4) - dyn) * 0.03;
+    if (now - evalT < 500) return;
+    const span = evalT ? (now - evalT) / 1000 : 0.5; evalT = now;
+    rate += (Math.min(1, ons / span / 6) - rate) * (warm < 6 ? 0.5 : 0.25); ons = 0; warm++;
+    if (warm < 6) return;   // first ~3 s: just listen
+    let best = VIBES[8];
+    if (loud > 0.035) {
+      const x = [cen, bR, hR, rate, dyn]; let bd = 1e9;
+      for (let v = 1; v <= 7; v++) { let dd = 0; for (let j = 0; j < 5; j++) dd += W[j] * (x[j] - VIBES[v].f[j]) ** 2; if (dd < bd) { bd = dd; best = VIBES[v]; } }
+    }
+    // rolling vote: a new vibe has to keep winning for a few seconds before the sculpture changes
+    let lead = 1;
+    for (let v = 1; v < VIBES.length; v++) { votes[v] = votes[v] * 0.8 + (VIBES[v] === best ? 0.2 : 0); if (votes[v] > votes[lead]) lead = v; }
+    if (VIBES[lead] !== vibe && votes[lead] > (vibe ? 0.55 : 0.67) && (!vibe || votes[lead] > votes[vibe.id] + 0.25)) { vibe = VIBES[lead]; listeners.forEach((f) => f(cur)); }
+  }
 })();

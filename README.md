@@ -7,6 +7,7 @@ A study timer that grows a glowing 3D particle sculpture from sound. One session
 - Time runs up the form, frequencies shape each slice, colour shifts when the track changes.
 - Leaving the tab (10 s grace) or going idle scatters particles and leaves a notch at that height.
 - Eight built-in generated tracks (Web Audio, no samples) including two 40 Hz tracks, microphone input, or your own audio file.
+- Live sound (mic, another tab, or your own file) is read for its vibe (Calm, Chill, Bass, Electronic, Heavy, Acoustic, Voice or Quiet room) from its brightness, bass weight, beat density and dynamics. Each vibe gets its own colour and its own form: petals, lobes, crystal facets, spikes, flutes or rings. Built-in tracks each have a fixed form.
 - Team rooms with no server: a room code carries the start time so everyone runs the same timer, then you swap result codes for a team board.
 - Custom session and break lengths, subject tags, focus score 0-100, check-ins every 25 minutes, pause, break mode with a breathing guide.
 - A session you end early is saved unfinished, exactly as far as it grew.
@@ -40,7 +41,7 @@ Open the printed URL. The mic and the floating window need `https://` or `localh
 | `index.html` | Markup for every section |
 | `styles.css` | Design tokens and layout |
 | `js/gl.js` | WebGL particle engine, shapes, scroll morphing, adaptive quality |
-| `js/audio.js` | Generated tracks, mic, file upload, 16-band analysis |
+| `js/audio.js` | Generated tracks, mic, file upload, 16-band analysis, vibe detection |
 | `js/app.js` | Sessions, distraction detection, team rooms, gallery, stats, garden, share card, UI |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Offline support and install-as-app |
 | `logo.png` | The Afterglow mark used in the header |
