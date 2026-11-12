@@ -48,9 +48,9 @@
   }
   const now0 = Date.now();
   const EXAMPLES = [
-    { id: 'ex1', ts: now0 - DAY * 1 - 3600e3, planned: 3000, focused: 2790, away: 210, score: 88, subject: 'Maths', dist: [0.62], tracks: { 'Night Desk': 1700, 'Rain on Glass': 1300 }, hues: [226, 190], styles: [2, 6], seed: 11 },
-    { id: 'ex2', ts: now0 - DAY * 2 - 7200e3, planned: 1500, focused: 1500, away: 0, score: 100, subject: 'Coding', dist: [], tracks: { 'Slow Tide': 1500 }, hues: [163], styles: [1], seed: 23 },
-    { id: 'ex3', ts: now0 - DAY * 4 - 5000e3, planned: 5400, focused: 4380, away: 1020, score: 71, subject: 'Reading', dist: [0.3, 0.55, 0.8], tracks: { 'Paper Lanterns': 2400, 'Deep Field': 1800, 'Night Desk': 1200 }, hues: [30, 268, 226], styles: [2, 4, 2], seed: 37 },
+    { id: 'ex1', ts: now0 - DAY * 1 - 3600e3, planned: 3000, focused: 2790, away: 210, score: 88, subject: 'Maths', dist: [0.62], tracks: { 'Night Desk': 1700, 'Soft Drizzle': 1300 }, hues: [226, 190], styles: [2, 9], seed: 11 },
+    { id: 'ex2', ts: now0 - DAY * 2 - 7200e3, planned: 1500, focused: 1500, away: 0, score: 100, subject: 'Coding', dist: [], tracks: { 'Slow Tide': 1500 }, hues: [163], styles: [14], seed: 23 },
+    { id: 'ex3', ts: now0 - DAY * 4 - 5000e3, planned: 5400, focused: 4380, away: 1020, score: 71, subject: 'Reading', dist: [0.3, 0.55, 0.8], tracks: { 'Paper Lanterns': 2400, 'Deep Field': 1800, 'Night Desk': 1200 }, hues: [30, 268, 226], styles: [13, 4, 2], seed: 37 },
   ].map((e) => { e.example = true; cache.set(e.id, synth(e.seed, e.hues, e.dist, e.styles)); return e; });
   const records = () => (db.sessions.length ? db.sessions : EXAMPLES);
 
@@ -662,7 +662,7 @@
   const ICONS = {
     desk: 'M5 20h8M9 20v-6M9 14l6-7M12.5 4.5l5 4-3 2.5-4-3.5z', rain: 'M7 4v5M12 6v6M17 4v5M9.5 14v5M14.5 15v5', tide: 'M3 9c3-3 6 3 9 0s6-3 9 0M3 15c3-3 6 3 9 0s6-3 9 0',
     lantern: 'M9 4h6M12 2v2M8 7c0-2 8-2 8 0v8c0 2-8 2-8 0zM12 17v4M10 21h4', field: 'M12 3l1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6zM19 17v3M17.5 18.5h3',
-    noise: 'M3 12h2l1.5-5 2 10 2-13 2 15 2-11 1.5 6 1.5-4H21', phones: 'M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H5a1 1 0 0 1-1-1zM20 14h-3v6h2a1 1 0 0 0 1-1z', pulse: 'M2 12h3l2-6 3 12 3-12 3 12 2-6h4',
+    noise: 'M3 12h2l1.5-5 2 10 2-13 2 15 2-11 1.5 6 1.5-4H21', phones: 'M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H5a1 1 0 0 1-1-1zM20 14h-3v6h2a1 1 0 0 0 1-1z', pulse: 'M2 12h3l2-6 3 12 3-12 3 12 2-6h4', shore: 'M2 8c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 13c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M4 18h16',
   };
   function renderTracks() {
     $$('[data-tracks]').forEach((el) => {

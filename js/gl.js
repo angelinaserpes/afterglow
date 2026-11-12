@@ -58,29 +58,51 @@
      d = { bands: Uint8Array(S*B), hue: Uint8Array(S), flag: Uint8Array(S) }
      flag byte: bit 7 = drifted here, bits 0-3 = form style (the vibe of the sound at that moment).
      Older saves used 255 for "drifted", which decodes as drifted + style 15 = classic. */
-  /* Each vibe carves the surface differently:
-     amp = how strongly the spectrum pushes the surface, lobes/lobeAmt/spin = soft petals that can spiral,
-     facet = flat crystal sides, spikes/spikeAmt = sharp ridges, rib = stacked rings, size = overall scale */
+  /* Each style is its own silhouette, not just a surface texture:
+     p = vertical profile, amp = how strongly the spectrum pushes the surface, lobes/spin = petals that can spiral,
+     facet = flat crystal sides, spikes = sharp ridges, helix = the whole axis corkscrews, size = overall scale.
+     Styles 1-8 are the vibes of live sound; 9-14 belong to built-in tracks; 15 = legacy saves (classic). */
   const FORMS = [
-    { amp: 1 },                                                   // 0 classic
-    { amp: 0.4, size: 1.06 },                                     // 1 calm: smooth, rounded
-    { amp: 0.85, lobes: 3, lobeAmt: 0.22, spin: 3 },             // 2 chill: three soft petals, slow drift
-    { amp: 1.3, lobes: 2, lobeAmt: 0.3, size: 1.04 },            // 3 bass: heavy, wide, two big lobes
-    { amp: 0.9, facet: 6, steps: 6 },                             // 4 electronic: hexagonal crystal, terraced
-    { amp: 1.15, spikes: 9, spikeAmt: 0.45, spin: 30 },          // 5 heavy: twisting spikes
-    { amp: 0.8, lobes: 6, lobeAmt: 0.15, spin: 16 },             // 6 acoustic: fluted spiral
-    { amp: 0.9, rib: 0.34 },                                      // 7 voice: stacked rings, like syllables
-    { amp: 0.5, size: 0.82 },                                     // 8 quiet room: small and still
+    { amp: 1 },                                                              // 0 classic column
+    { p: 'orb', amp: 0.4, size: 1.55 },                                      // 1 calm: a round moon
+    { p: 'tulip', amp: 0.8, lobes: 3, lobeAmt: 0.2, spin: 3 },              // 2 chill: a three-petal bud
+    { p: 'mountain', amp: 1.2, lobes: 2, lobeAmt: 0.22 },                   // 3 bass: wide, heavy base
+    { p: 'diamond', amp: 0.7, facet: 6, steps: 6 },                          // 4 electronic: faceted crystal
+    { amp: 1.1, spikes: 5, spikeAmt: 0.95, spin: 9, size: 0.8 },            // 5 heavy: twisting five-point star
+    { amp: 0.8, size: 0.5, helix: 0.36, turns: 2.5 },                        // 6 acoustic: a corkscrew ribbon
+    { p: 'beads', n: 4, soft: 0.6, amp: 0.7, size: 1.15 },                   // 7 voice: four soft beads
+    { amp: 0.5, size: 0.55 },                                                // 8 quiet room: a thin spindle
+    { p: 'drop', amp: 0.55, size: 1.5 },                                     // 9 drizzle: a teardrop
+    { p: 'funnel', amp: 0.8, lobes: 2, lobeAmt: 0.25, spin: 12, helix: 0.1, turns: 2 },  // 10 ocean: a whirlpool
+    { p: 'hourglass', amp: 0.6, size: 1.1 },                                 // 11 binaural: an hourglass
+    { p: 'beads', n: 9, soft: 3, amp: 0.5, size: 1.3 },                      // 12 pulse: stacked discs
+    { p: 'lantern', amp: 0.6, lobes: 8, lobeAmt: 0.1, size: 1.25 },          // 13 paper lantern
+    { p: 'wave', amp: 0.7, size: 1.05 },                                     // 14 tide: a slow wavy column
   ];
   for (let k = FORMS.length; k < 16; k++) FORMS[k] = FORMS[0];
+  function prof(F, t) {
+    switch (F.p) {
+      case 'orb': return 0.06 + Math.sqrt(Math.max(0, 1 - (2 * t - 1) * (2 * t - 1)));
+      case 'tulip': return (0.22 + 1.25 * Math.pow(Math.sin(Math.PI * Math.pow(t, 1.7)), 0.8)) * (1 - 0.2 * t);
+      case 'mountain': return 0.1 + 1.7 * Math.pow(1 - t, 1.3) * Math.min(1, t * 14);
+      case 'diamond': return 0.05 + 1.7 * (1 - Math.abs(2 * t - 1));
+      case 'beads': return 0.14 + 0.95 * Math.pow(Math.abs(Math.sin(Math.PI * F.n * t)), F.soft);
+      case 'drop': return 0.03 + 2.55 * (1 - t) * Math.sqrt(t);
+      case 'funnel': return 0.12 + 1.5 * t * t;
+      case 'hourglass': return 0.2 + 1.25 * Math.pow(Math.abs(2 * t - 1), 1.4);
+      case 'lantern': return (0.3 + 0.85 * Math.pow(Math.sin(Math.PI * t), 0.6)) * Math.min(1, t * 16, (1 - t) * 16);
+      case 'wave': return (0.75 + 0.4 * Math.sin(Math.PI * 2 * 2.5 * t)) * (0.5 + 0.5 * Math.sin(Math.PI * Math.pow(t, 0.8)));
+      default: return 0.5 + 0.5 * Math.sin(Math.PI * Math.pow(t, 0.8));
+    }
+  }
   function formAt(st, i, t) {
-    const F = FORMS[st]; let f = F.size || 1; const a = ANG[i];
+    const F = FORMS[st]; let f = (F.size || 1) * prof(F, t); const a = ANG[i];
     if (F.lobes) f *= 1 + F.lobeAmt * Math.cos(F.lobes * a + (F.spin || 0) * t);
     if (F.facet) { const w = (Math.PI * 2) / F.facet; f *= Math.cos(w / 2) / Math.cos((((a % w) + w) % w) - w / 2); }
-    if (F.spikes) f *= 1 + F.spikeAmt * Math.pow(Math.abs(Math.cos((F.spikes * a) / 2 + (F.spin || 0) * t)), 10);
-    if (F.rib) f *= 1 - F.rib * Math.pow(0.5 + 0.5 * Math.cos(t * S * 0.3), 3);
+    if (F.spikes) f *= 0.45 + F.spikeAmt * Math.pow(Math.abs(Math.cos((F.spikes * a) / 2 + (F.spin || 0) * t)), 3);
     return f;
   }
+  const hx = (st, t) => (FORMS[st].helix || 0) * Math.sin(Math.PI * Math.min(1, t * 1.15));
   const notch = new Float32Array(S), styl = new Uint8Array(S), lo = new Float32Array(S * 3), hi = new Float32Array(S * 3), sA = new Float32Array(S * B), sV = new Float32Array(S * B);
   function fillSculpt(d, P, C, n) {
     const flag = d.flag, hue = d.hue, raw = d.bands, bands = sV;
@@ -110,10 +132,14 @@
       let a = clamp(0.45 + ((a0 * (1 - k) + a1 * k) / 255 - 0.45) * amp, 0, 1);
       if (FORMS[st0].steps && st0 === st1) a = Math.round(a * FORMS[st0].steps) / FORMS[st0].steps;
       const nt = notch[s0] * (1 - k) + notch[s1] * k;
-      const env = 0.5 + 0.5 * Math.sin(Math.PI * Math.pow(t, 0.8));
       const fm = st0 === st1 ? formAt(st0, i, t) : formAt(st0, i, t) * (1 - k) + formAt(st1, i, t) * k;
-      const r = (0.13 + 0.66 * a) * env * SH[i] * (1 - 0.62 * nt) * fm;
+      const r = (0.13 + 0.66 * a) * SH[i] * (1 - 0.62 * nt) * fm;
       let x = CX[i] * r, z = SZ[i] * r, y = (t - 0.5) * 2.4 + JY[i], dim = 1;
+      const h0 = hx(st0, t), h1 = hx(st1, t);
+      if (h0 || h1) {
+        const w0 = Math.PI * 2 * (FORMS[st0].turns || 0) * t, w1 = Math.PI * 2 * (FORMS[st1].turns || 0) * t;
+        x += h0 * Math.cos(w0) * (1 - k) + h1 * Math.cos(w1) * k; z += h0 * Math.sin(w0) * (1 - k) + h1 * Math.sin(w1) * k;
+      }
       if (nt > 0.02 && RS[i] < nt * 0.5) {
         const m = 0.5 + RS[i] * 3.2;
         x += SCX[i] * m; y += SCY[i] * m; z += SCZ[i] * m; dim = 0.55;

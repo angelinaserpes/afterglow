@@ -1,4 +1,4 @@
-/* Afterglow — sound. Six generated tracks (Web Audio only, no samples), microphone, and file upload.
+/* Afterglow — sound. Nine generated tracks (Web Audio only, no samples), microphone, and file upload.
    Everything is analysed in the browser; nothing is recorded or sent anywhere. */
 (function () {
   'use strict';
@@ -34,15 +34,20 @@
   const noiseCache = {};
   function noise(kind) {
     if (noiseCache[kind]) return noiseCache[kind];
-    const len = ctx.sampleRate * 4, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
-    let l = 0, b0 = 0, b1 = 0, b2 = 0;
-    for (let i = 0; i < len; i++) {
-      const w = Math.random() * 2 - 1;
-      if (kind === 'white') d[i] = w;
-      else if (kind === 'brown') { l = (l + 0.02 * w) / 1.02; d[i] = l * 3.5; }
-      else if (kind === 'pink') { b0 = 0.99765 * b0 + w * 0.099046; b1 = 0.963 * b1 + w * 0.2965164; b2 = 0.57 * b2 + w * 1.0526913; d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.2; }
-      else if (kind === 'crackle') d[i] = Math.random() < 0.0009 ? (Math.random() * 2 - 1) * 0.9 : w * 0.012;
+    // 8 s loops; the first half second is cross-faded with what would have come after the end, so the loop has no seam
+    const sr = ctx.sampleRate, len = sr * 8, F = sr >> 1, buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0), ext = new Float32Array(F);
+    let l = 0, b0 = 0, b1 = 0, b2 = 0, e = 0;
+    for (let i = 0; i < len + F; i++) {
+      const w = Math.random() * 2 - 1; let v = w;
+      if (kind === 'brown') { l = (l + 0.02 * w) / 1.02; v = l * 3.5; }
+      else if (kind === 'pink') { b0 = 0.99765 * b0 + w * 0.099046; b1 = 0.963 * b1 + w * 0.2965164; b2 = 0.57 * b2 + w * 1.0526913; v = (b0 + b1 + b2 + w * 0.1848) * 0.2; }
+      else if (kind === 'drizzle') {   // thousands of tiny soft drops a second, each a short decaying tick
+        if (Math.random() < 0.012) e = Math.pow(Math.random(), 3) * 0.9;
+        e *= 0.9965; v = w * e;
+      }
+      if (i < len) d[i] = v; else ext[i - len] = v;
     }
+    for (let i = 0; i < F; i++) { const q = i / F; d[i] = d[i] * q + ext[i] * (1 - q); }
     return (noiseCache[kind] = buf);
   }
 
@@ -129,28 +134,29 @@
 
   /* Each track: { name, hue, mood, bpm, cutoff, init(K), step(K, i, t, spb) } — step is called once per 16th note */
   const TRACKS = [
-    { name: 'Night Desk', style: 2, icon: 'desk', mood: 'Lofi · 72 bpm', hue: 226, bpm: 72, cutoff: 3200,
+    { name: 'Night Desk', style: 2, icon: 'desk', mood: 'Lofi · 72 bpm', hue: 226, bpm: 72, cutoff: 3000,
       chords: [[50, 57, 60, 64, 65], [43, 53, 57, 59, 64], [48, 55, 59, 62, 64], [45, 55, 60, 64, 67]],
-      init(K) { K.loop('crackle', 0.5, 'highpass', 1200); },
+      init() {},
       step(K, i, t, s) {
         const bar = (i >> 4) % 4, p = i % 16, ch = this.chords[bar], sw = p % 2 ? s * 0.28 : 0;
-        if (p === 0 || p === 7) ch.slice(1).forEach((m, k) => K.keys(m, t + sw + k * 0.012, s * 7, 0.055));
-        if (p === 0 || p === 10) K.note(mtof(ch[0] - 12), t, s * 5, { gain: 0.2, attack: 0.02 });
-        if (p === 0 || p === 6 || p === 10) K.kick(t + sw, p === 6 ? 0.3 : 0.5);
-        if (p === 4 || p === 12) K.hit(t, 0.16, 'bandpass', 1700, 0.16);
-        if (p % 2 === 0 || Math.random() < 0.2) K.hit(t + sw, p % 4 === 2 ? 0.05 : 0.028, 'highpass', 7500, 0.04);
-        if (p % 4 === 2 && Math.random() < 0.3) K.keys(pick(ch.slice(2)) + 12, t + sw, s * 4, 0.035);
+        if (p === 0) K.pad(ch.slice(1), t, s * 17, 0.02, 'sine', 1500);
+        if (p === 0 || p === 7) ch.slice(1).forEach((m, k) => K.keys(m, t + sw + k * 0.012, s * 7, 0.05));
+        if (p === 0 || p === 10) K.note(mtof(ch[0] - 12), t, s * 5, { gain: 0.18, attack: 0.02 });
+        if (p === 0 || p === 10) K.kick(t + sw, 0.34);
+        if (p === 4 || p === 12) K.note(mtof(84), t, 0.12, { gain: 0.012, attack: 0.004, wet: 0.6 });   // a soft rim tick, no noise
+        if (p % 4 === 2 && Math.random() < 0.3) K.keys(pick(ch.slice(2)) + 12, t + sw, s * 4, 0.03);
+        if (p === 8 && Math.random() < 0.35) K.bell(pick(ch.slice(2)) + 24, t, 0.012);
       } },
-    { name: 'Rain on Glass', style: 6, icon: 'rain', mood: 'Rain · slow piano', hue: 190, bpm: 60, cutoff: 9000,
-      chords: [[53, 57, 60, 64], [57, 60, 64, 67], [50, 57, 60, 65], [48, 55, 59, 64]],
-      init(K) { K.loop('white', 0.075, 'highpass', 2200); const b = K.loop('pink', 0.3, 'lowpass', 900); K.lfo(b.g.gain, 0.07, 0.1); },
-      step(K, i, t, s) {
-        const bar = (i >> 5) % 4, ch = this.chords[bar];
-        if (i % 32 === 0) K.pad(ch, t, s * 34, 0.035, 'triangle', 900);
-        if (i % 4 === 0 && Math.random() < 0.42) K.keys(pick(ch) + pick([12, 12, 24]), t + Math.random() * 0.05, s * 10, 0.05);
-        if (Math.random() < 0.05) K.pluck(pick(ch) + 24, t, 0.025);
+    { name: 'Soft Drizzle', style: 9, icon: 'rain', mood: 'Rain · drizzle', hue: 190, bpm: 60, cutoff: 12000,
+      init(K) {
+        const dz = K.loop('drizzle', 0.55, 'bandpass', 4600, 0.4); K.lfo(dz.g.gain, 0.05, 0.1);
+        K.loop('pink', 0.05, 'highpass', 2500);
+        const far = K.loop('brown', 0.1, 'lowpass', 500); K.lfo(far.g.gain, 0.031, 0.04);
+      },
+      step(K, i, t) {   // now and then a single drop lands close by
+        if (Math.random() < 0.09) K.note(mtof(pick([86, 89, 91, 93, 96, 98])), t + Math.random() * 0.2, 0.09, { gain: 0.006 + Math.random() * 0.008, attack: 0.002, wet: 0.5 });
       } },
-    { name: 'Slow Tide', style: 1, icon: 'tide', mood: 'Ambient · drone', hue: 163, bpm: 60, cutoff: 6000,
+    { name: 'Slow Tide', style: 14, icon: 'tide', mood: 'Ambient · drone', hue: 163, bpm: 60, cutoff: 6000,
       init(K) {
         [38, 45, 50, 54].forEach((m, k) => { const d = K.drone(mtof(m), 'sawtooth', 0.05, 500, 7 + k); K.lfo(d.f.frequency, 0.03 + k * 0.017, 320); });
         const sea = K.loop('pink', 0.22, 'lowpass', 700); K.lfo(sea.g.gain, 0.09, 0.2); K.lfo(sea.f.frequency, 0.09, 400);
@@ -158,18 +164,17 @@
       step(K, i, t, s) {
         if (i % 16 === 0 && Math.random() < 0.55) K.note(mtof(pick([62, 66, 69, 74, 76])), t, s * 30, { gain: 0.03, attack: s * 10, sustain: true, release: s * 12, wet: 1 });
       } },
-    { name: 'Paper Lanterns', style: 2, icon: 'lantern', mood: 'Lofi · 84 bpm', hue: 30, bpm: 84, cutoff: 4200,
+    { name: 'Paper Lanterns', style: 13, icon: 'lantern', mood: 'Lofi · 84 bpm', hue: 30, bpm: 84, cutoff: 4200,
       chords: [[48, 55, 59, 64], [52, 55, 59, 62], [53, 57, 60, 64], [55, 59, 62, 64]],
       scale: [60, 62, 64, 67, 69, 72, 74, 76],
-      init(K) { K.loop('crackle', 0.35, 'highpass', 1500); },
+      init() {},
       step(K, i, t, s) {
         const bar = (i >> 4) % 4, p = i % 16, ch = this.chords[bar], sw = p % 2 ? s * 0.22 : 0;
-        if (p === 0) K.pad(ch, t, s * 17, 0.03, 'triangle', 1000);
-        if (p === 0 || p === 8 || p === 11) K.note(mtof(ch[0] - 12), t + sw, s * 3, { gain: 0.17, attack: 0.015 });
-        if (p % 2 === 0 ? Math.random() < 0.6 : Math.random() < 0.22) K.pluck(pick(this.scale), t + sw, 0.07);
-        if (p === 0 || p === 9) K.kick(t + sw, 0.38);
-        if (p === 4 || p === 12) K.hit(t, 0.1, 'bandpass', 2100, 0.12);
-        if (p % 2 === 0) K.hit(t + sw, 0.022, 'highpass', 8000, 0.03);
+        if (p === 0) K.pad(ch, t, s * 17, 0.032, 'triangle', 1000);
+        if (p === 0 || p === 8 || p === 11) K.note(mtof(ch[0] - 12), t + sw, s * 3, { gain: 0.16, attack: 0.015 });
+        if (p % 2 === 0 ? Math.random() < 0.6 : Math.random() < 0.22) K.pluck(pick(this.scale), t + sw, 0.065);
+        if (p === 0 || p === 9) K.kick(t + sw, 0.3);
+        if (p === 4 || p === 12) K.note(mtof(88), t, 0.1, { gain: 0.01, attack: 0.004, wet: 0.6 });
       } },
     { name: 'Deep Field', style: 4, icon: 'field', mood: 'Space · bells', hue: 268, bpm: 60, cutoff: 10000,
       init(K) {
@@ -180,17 +185,34 @@
       step(K, i, t) {
         if (i % 8 === 0 && Math.random() < 0.5) { const m = pick([72, 74, 79, 81, 84, 86, 88]); K.bell(m, t, 0.05); K.bell(m, t + 0.42, 0.02); K.bell(m, t + 0.84, 0.009); }
       } },
-    { name: 'Brown Noise', style: 3, icon: 'noise', mood: 'Noise · steady', hue: 208, bpm: 60, cutoff: 12000,
-      init(K) { K.loop('brown', 0.5, 'lowpass', 650); K.loop('pink', 0.05, 'lowpass', 2500); K.drone(55, 'sine', 0.03, 200, 2); },
+    { name: 'Brown Noise', style: 1, icon: 'noise', mood: 'Noise · deep', hue: 208, bpm: 60, cutoff: 12000,
+      // deep, even and unchanging: nothing melodic, nothing that moves
+      init(K) { K.loop('brown', 0.62, 'lowpass', 420); K.loop('brown', 0.16, 'lowpass', 1200); },
       step() {} },
-    { name: 'Gamma 40 Binaural', style: 7, icon: 'phones', mood: '40 Hz · headphones', hue: 338, bpm: 60, cutoff: 9000,
-      // 200 Hz in the left ear, 240 Hz in the right: the 40 Hz difference only exists with headphones on
-      init(K) { K.stereo(200, -1, 0.16); K.stereo(240, 1, 0.16); K.loop('pink', 0.09, 'lowpass', 1400); K.loop('brown', 0.16, 'lowpass', 500); },
-      step(K, i, t, s) { if (i % 64 === 0) K.pad([50, 57, 62], t, s * 60, 0.014, 'sine', 900); } },
-    { name: 'Gamma 40 Pulse', style: 5, icon: 'pulse', mood: '40 Hz · speakers ok', hue: 52, bpm: 60, cutoff: 9000,
-      // a soft chord pulsed 40 times a second, audible on any speaker
-      init(K) { K.pulse([220, 330, 440], 40, 0.075); K.loop('pink', 0.1, 'lowpass', 1600); K.loop('brown', 0.14, 'lowpass', 500); },
-      step(K, i, t, s) { if (i % 64 === 0) K.pad([45, 57, 64], t, s * 60, 0.014, 'sine', 900); } },
+    { name: 'Gamma 40 Binaural', style: 11, icon: 'phones', mood: '40 Hz · headphones', hue: 338, bpm: 60, cutoff: 9000,
+      // 152 Hz in the left ear, 192 Hz in the right: the 40 Hz difference only exists with headphones on
+      chords: [[45, 52, 57, 64, 69], [41, 48, 57, 60, 67], [48, 55, 60, 64, 71], [43, 50, 59, 62, 69]],
+      init(K) { K.stereo(152, -1, 0.07); K.stereo(192, 1, 0.07); K.loop('pink', 0.025, 'lowpass', 1200); },
+      step(K, i, t, s) {
+        if (i % 64 === 0) K.pad(this.chords[(i >> 6) % 4], t, s * 74, 0.024, 'sine', 1600);
+        if (i % 16 === 8 && Math.random() < 0.4) K.bell(pick(this.chords[(i >> 6) % 4]) + 24, t, 0.014);
+      } },
+    { name: 'Gamma 40 Pulse', style: 12, icon: 'pulse', mood: '40 Hz · speakers ok', hue: 52, bpm: 60, cutoff: 9000,
+      // a low, soft chord breathing 40 times a second, audible on any speaker
+      chords: [[50, 57, 62, 66, 69], [47, 54, 62, 66, 71], [43, 50, 59, 62, 67], [45, 52, 61, 64, 69]],
+      init(K) { K.pulse([110, 165, 220], 40, 0.055); K.loop('pink', 0.025, 'lowpass', 1200); },
+      step(K, i, t, s) {
+        if (i % 64 === 0) K.pad(this.chords[(i >> 6) % 4], t, s * 74, 0.024, 'sine', 1600);
+        if (i % 16 === 4 && Math.random() < 0.35) K.bell(pick(this.chords[(i >> 6) % 4]) + 24, t, 0.012);
+      } },
+    { name: 'Open Shore', style: 10, icon: 'shore', mood: 'Ocean · slow waves', hue: 200, bpm: 60, cutoff: 12000,
+      // two swells at different speeds so no two waves arrive quite the same way
+      init(K) {
+        const w1 = K.loop('pink', 0.36, 'lowpass', 520); K.lfo(w1.g.gain, 0.085, 0.3); K.lfo(w1.f.frequency, 0.085, 380);
+        const foam = K.loop('white', 0.026, 'highpass', 3800); K.lfo(foam.g.gain, 0.085, 0.024);
+        const w2 = K.loop('brown', 0.3, 'lowpass', 320); K.lfo(w2.g.gain, 0.053, 0.22);
+      },
+      step(K, i, t, s) { if (i % 96 === 0) K.pad([50, 57, 62, 69], t, s * 80, 0.012, 'sine', 1200); } },
   ];
 
   function startTrack(idx) {
