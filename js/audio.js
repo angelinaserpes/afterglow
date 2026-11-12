@@ -1,4 +1,4 @@
-/* Afterglow — sound. Nine generated tracks (Web Audio only, no samples), microphone, and file upload.
+/* Afterglow — sound. Ten generated tracks (Web Audio only, no samples), microphone, and file upload.
    Everything is analysed in the browser; nothing is recorded or sent anywhere. */
 (function () {
   'use strict';
@@ -36,14 +36,14 @@
     if (noiseCache[kind]) return noiseCache[kind];
     // 8 s loops; the first half second is cross-faded with what would have come after the end, so the loop has no seam
     const sr = ctx.sampleRate, len = sr * 8, F = sr >> 1, buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0), ext = new Float32Array(F);
-    let l = 0, b0 = 0, b1 = 0, b2 = 0, e = 0;
+    let l = 0, b0 = 0, b1 = 0, b2 = 0, e = 0, tg = 0;
     for (let i = 0; i < len + F; i++) {
       const w = Math.random() * 2 - 1; let v = w;
       if (kind === 'brown') { l = (l + 0.02 * w) / 1.02; v = l * 3.5; }
       else if (kind === 'pink') { b0 = 0.99765 * b0 + w * 0.099046; b1 = 0.963 * b1 + w * 0.2965164; b2 = 0.57 * b2 + w * 1.0526913; v = (b0 + b1 + b2 + w * 0.1848) * 0.2; }
       else if (kind === 'drizzle') {   // thousands of tiny soft drops a second, each a short decaying tick
-        if (Math.random() < 0.012) e = Math.pow(Math.random(), 3) * 0.9;
-        e *= 0.9965; v = w * e;
+        if (Math.random() < 0.03) tg = Math.pow(Math.random(), 2) * 0.5;
+        tg *= 0.997; e += (tg - e) * 0.02; v = w * e;
       }
       if (i < len) d[i] = v; else ext[i - len] = v;
     }
@@ -115,6 +115,12 @@
         const g = ctx.createGain(); g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
         s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random() * 3); s.stop(t + dur + 0.02);
       },
+      drop(freq, t, gain) {              // a soft water blip: a short sine that slides upward
+        const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(freq * 1.7, t + 0.09);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+        o.connect(g); g.connect(out); if (wet) { const w = ctx.createGain(); w.gain.value = 0.5; g.connect(w); w.connect(wet); }
+        o.start(t); o.stop(t + 0.16);
+      },
       stereo(freq, pan, gain) {         // one steady tone in one ear
         const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = freq; g.gain.value = gain; o.connect(g);
         if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); p.connect(out); } else g.connect(out);
@@ -147,15 +153,14 @@
         if (p % 4 === 2 && Math.random() < 0.3) K.keys(pick(ch.slice(2)) + 12, t + sw, s * 4, 0.03);
         if (p === 8 && Math.random() < 0.35) K.bell(pick(ch.slice(2)) + 24, t, 0.012);
       } },
-    { name: 'Soft Drizzle', style: 9, icon: 'rain', mood: 'Rain · drizzle', hue: 190, bpm: 60, cutoff: 12000,
+    { name: 'Soft Drizzle', style: 9, icon: 'rain', mood: 'Rain · drizzle', hue: 190, bpm: 60, cutoff: 4200,
+      // a warm, even hush with fine drops inside it; everything above ~4 kHz is rolled off so nothing is sharp
       init(K) {
-        const dz = K.loop('drizzle', 0.55, 'bandpass', 4600, 0.4); K.lfo(dz.g.gain, 0.05, 0.1);
-        K.loop('pink', 0.05, 'highpass', 2500);
-        const far = K.loop('brown', 0.1, 'lowpass', 500); K.lfo(far.g.gain, 0.031, 0.04);
+        const body = K.loop('pink', 0.3, 'bandpass', 1300, 0.25); K.lfo(body.g.gain, 0.04, 0.05);
+        const dz = K.loop('drizzle', 0.5, 'lowpass', 3000); K.lfo(dz.g.gain, 0.06, 0.08);
+        const far = K.loop('brown', 0.14, 'lowpass', 450); K.lfo(far.g.gain, 0.031, 0.04);
       },
-      step(K, i, t) {   // now and then a single drop lands close by
-        if (Math.random() < 0.09) K.note(mtof(pick([86, 89, 91, 93, 96, 98])), t + Math.random() * 0.2, 0.09, { gain: 0.006 + Math.random() * 0.008, attack: 0.002, wet: 0.5 });
-      } },
+      step() {} },
     { name: 'Slow Tide', style: 14, icon: 'tide', mood: 'Ambient · drone', hue: 163, bpm: 60, cutoff: 6000,
       init(K) {
         [38, 45, 50, 54].forEach((m, k) => { const d = K.drone(mtof(m), 'sawtooth', 0.05, 500, 7 + k); K.lfo(d.f.frequency, 0.03 + k * 0.017, 320); });
@@ -205,14 +210,28 @@
         if (i % 64 === 0) K.pad(this.chords[(i >> 6) % 4], t, s * 74, 0.024, 'sine', 1600);
         if (i % 16 === 4 && Math.random() < 0.35) K.bell(pick(this.chords[(i >> 6) % 4]) + 24, t, 0.012);
       } },
-    { name: 'Open Shore', style: 10, icon: 'shore', mood: 'Ocean · slow waves', hue: 200, bpm: 60, cutoff: 12000,
-      // two swells at different speeds so no two waves arrive quite the same way
+    { name: 'Open Shore', style: 10, icon: 'shore', mood: 'Ocean · slow waves', hue: 200, bpm: 60, cutoff: 7000,
+      // each wave swells and brightens as it comes in, then pulls back; a second, slower swell keeps them uneven
       init(K) {
-        const w1 = K.loop('pink', 0.36, 'lowpass', 520); K.lfo(w1.g.gain, 0.085, 0.3); K.lfo(w1.f.frequency, 0.085, 380);
-        const foam = K.loop('white', 0.026, 'highpass', 3800); K.lfo(foam.g.gain, 0.085, 0.024);
-        const w2 = K.loop('brown', 0.3, 'lowpass', 320); K.lfo(w2.g.gain, 0.053, 0.22);
+        const w1 = K.loop('pink', 0.34, 'lowpass', 900); K.lfo(w1.g.gain, 0.1, 0.3); K.lfo(w1.f.frequency, 0.1, 750);
+        const wash = K.loop('pink', 0.07, 'bandpass', 2200, 0.5); K.lfo(wash.g.gain, 0.1, 0.065);
+        const w2 = K.loop('brown', 0.3, 'lowpass', 350); K.lfo(w2.g.gain, 0.067, 0.22);
+        const lap = K.loop('drizzle', 0.2, 'bandpass', 800, 0.8); K.lfo(lap.g.gain, 0.31, 0.12); K.lfo(lap.f.frequency, 0.23, 300);   // water moving close by
       },
-      step(K, i, t, s) { if (i % 96 === 0) K.pad([50, 57, 62, 69], t, s * 80, 0.012, 'sine', 1200); } },
+      step(K, i, t, s) {
+        if (Math.random() < 0.16) K.drop(260 + Math.random() * 500, t + Math.random() * 0.2, 0.006 + Math.random() * 0.01);        // small trickles and bubbles
+        if (i % 96 === 0) K.pad([50, 57, 62, 69], t, s * 80, 0.012, 'sine', 1200);
+      } },
+    { name: 'Clear Mind', style: 5, icon: 'mind', mood: 'Focus · soft pads', hue: 248, bpm: 60, cutoff: 5000,
+      // no beat and no noise: long overlapping chords, a low hum, and single notes that fade into the reverb
+      chords: [[50, 57, 61, 64, 66], [47, 54, 61, 62, 66], [43, 50, 59, 62, 66], [45, 52, 59, 61, 64]],
+      init(K) { K.drone(mtof(38), 'sine', 0.07, 400, 3); },
+      step(K, i, t, s) {
+        const ch = this.chords[(i >> 6) % 4];
+        if (i % 64 === 0) { K.pad(ch, t, s * 78, 0.03, 'sine', 1800); K.pad([ch[2] + 12, ch[4] + 12], t + s * 8, s * 60, 0.01, 'sine', 2400); }
+        if (i % 4 === 0 && Math.random() < 0.45) K.note(mtof(pick(ch) + 12), t, s * 12, { gain: 0.016, attack: 0.06, wet: 0.9 });
+        if (i % 32 === 16 && Math.random() < 0.5) K.bell(pick(ch.slice(2)) + 24, t, 0.01);
+      } },
   ];
 
   function startTrack(idx) {
